@@ -93,7 +93,24 @@
  & Added language to require direct messages for user commands. Modified language to allow for an additional authentication step. Added mention of a 60 second command response time limit.\\
  \hline
  1.2 & 12/03/2019
- & Fixed broken symbol. Correct spelling error. Created table for user commands. Updated both figures.
+ & Fixed broken symbol. Correct spelling error. Created table for user commands. Updated both figures.\\
+ \hline
+ 1.3 & 04/27/2020
+ &  \begin{itemize}
+            \item 1.3.2 Removed first product function (Chatbot has it's own app window and does not need to listen for it's name).
+            \item Removed references to pools (replaced with generalized term: resources).
+            \item Removed requirement for updating certificates.
+            \item Removed usage of the university's federated login system, instead built-in authentication in Microsoft Teams is used.
+            \item Removed reference to stateless functionality, which does not work for this type of application.
+            \item 2.1 Testing suites target input checking (as the application does not easily allow for live testing with it's web services implementing additional built-in security to safeguard traffic).
+            \item 2.2 Removed reference to additional persistent storage (this requirement is unneeded).
+            \item 2.3 Updated Table 1 (Available user commands). Added: list, listall, listbound, disablenow, help, request-auth, Removed: updatecert.
+            \item 2.5 Removed reference to additional authentication step (This is unneeded for the used authentication pattern).
+            \item Changed reference to "remove" commmand to "disable".
+            \item Removed "Logical database requirements" section (formerly 2.7), as no database is needed.
+        \end{itemize}    
+
+            
 \end{tabular}
 
 \clearpage
@@ -127,24 +144,21 @@ The internal relay will operate as a software interface with the Citrix NetScale
 
 \subsubsection{Product functions}
 The software will have the following major functions:
-\\1. The chatbot will begin listening for instruction from a user when it's directly referenced by name.
-\\2. The chatbot will accept input from the user and parse input for commands.
-\\3. Upon parsing a command, it will securely transmit command and user information to the internal relay.
-\\4. The relay will manage authentication
-\\5. The relay will send requests to the load balancer through NITRO API
-\\6. The relay will transmit results back to the chatbot.
-\\7. The chatbot will respond appropriately to user commands.
-\\8. The user will not have to authenticate separately outside of Microsoft Teams.
-\\9. Users will be able to query for the status of their server pools (including which servers are enabled and disabled).
-\\10. Users will be able to query for the status of individual servers.
-\\11. Users will be able to enable or disable servers within a pool.
-\\12. Users will be able to update certificates for their pools.
+\\1. The chatbot will accept input from the user and parse input for commands.
+\\2. Upon parsing a command, it will securely transmit command and user information to the internal relay.
+\\3. The relay will manage authentication
+\\4. The relay will send requests to the load balancer through NITRO API
+\\5. The relay will transmit results back to the chatbot.
+\\6. The chatbot will respond appropriately to user commands.
+\\7. The user will not have to authenticate separately outside of Microsoft Teams.
+\\8. Users will be able to query for the status resources (including vservers, servicegroups, services, and servers).
+\\9. Users will be able to query for the status of individual servers.
 
 \subsubsection{User characteristics}
 Users of this chatbot will be system administrators who manage pools of servers at Oregon State University. They have ONID (OSU Network ID) accounts. They have a high-level of technical understanding and are familiar with command line interfaces. The targeted user base is approximately 2 dozen people.
 \subsubsection{Limitations}
 The chatbot will operate on a common platform accessible to all targeted users.
-It will leverage the university's federated login system to identify and properly verify authentication and permissions.
+It will leverage the built-in authentication within Microsoft Teams to identify users.
 The chatbot must be written in a framework that ensures future portability.
 The chatbot itself must be stateless, and not requiring persistent storage.
 The chatbot should be (virtually) always available, running on a cloud service within public internet.
@@ -158,8 +172,7 @@ A system of CI/CD (Continuous Integration / Continuous Deployment) must also be 
 \\\underline{Load Balancer}: Load balancer is a reverse proxy that distributes network or application traffic across the server pool. This will increase the efficiency, maintainability, and, speed of the server pool. 
 \\\underline{NITRO API}: The NetScaler NITRO protocol allows you to configure and monitor the NetScaler appliance programmatically by using Representational State Transfer (REST) interfaces \cite{citrixnitro}.
 \\\underline{ONID}: Oregon State University ID used for identification
-\\\underline{REST}: Representational State Transfer. It is a software architect style that defines what could be used for creating web services. The main constraint are the client that uses the API and the resources that the API can provide information to \cite{restphd} \cite{rest}.  
-\\\underline{Server Pool}: An autonomous region that contains physical servers. It is a simplified unified view where virtual machines are located \cite{pools}.
+\\\underline{REST}: Representational State Transfer. It is a software architect style that defines what could be used for creating web services. The main constraint are the client that uses the API and the resources that the API can provide information to \cite{restphd} \cite{rest}.
 
 \section{Requirements}
 \subsection{Apportioning of requirements}
@@ -168,7 +181,7 @@ This first is referred to as the chatbot, and the second piece of software is re
 These separate pieces of software will be developed separately, but concurrently.
 Both have features that rely on the operation of the other.
 
-To assist with development, tests will be written to simulate interaction between the component software.
+To assist with development, tests will be written to check input and parsing of that input.
 Features and requirements that span both the chatbot and the relay may be implemented in this fashion at first.
 However the feature will not be considered fully implemented until both component software operate with each other.
 
@@ -185,7 +198,6 @@ The chatbot will send a request to the relay containing all the necessary inform
 When the relay receives a request, it will use the user information to request authentication from the NetScaler.
 The relay will communicate requests to the NetScaler using it's REST API, NITRO API.
 The relay will maintain and manage authentication in a manner that meets the software requirements.
-The relay may require persistent storage to manage and store additional information.
 
 After a user is authenticated, the relay will send the command request to the NetScaler.
 Upon receiving a reply from the NetScaler, the relay will format a reply and send it to chatbot.
@@ -196,35 +208,52 @@ The perspective of the user, the functioning of the software will be quiet simpl
 The intention of the software is to perform these complex configuration tasks as seamlessly as possible.
 The chatbot will parse commands from a user when a user directly messages it.
 The available functions are detailed below:
-
+\linebreak
 \begin{table}[h]
     \caption{Available user commands}
-    \begin{tabular}{ p{1.5in} p{2.5in} p{2.5in}  }
+    \begin{tabular}{ p{1.85in} p{2.7in} p{2.0in}  }
      \textbf{Command} & \textbf{Description} & \textbf{Response} \\
      \hline
-     status $<$pool-name$>$
-     & Query the status of a pool
-     & List of servers within the pool and if they are enabled \\
+     list
+     & List all vservers
+     & Returns a list of all vservers\\
      \hline
-     status $<$server-name$>$
-     & Query the status of a server
-     & The server name and it's current number of active connections \\
+     listall
+     & List all resources
+     & Returns a list of all resources\\
      \hline
-     enable $<$server-name$>$
+     listbound $<$resource$>$
+     & Lists all resources bound to the specified resource
+     & Returns a list of resources, or an error if it's a server \\
+     \hline
+     status $<$resource$>$
+     & Query the status of a resource
+     & Returns a list of resource properties, including it's state \\
+     \hline
+     enable $<$resource$>$
      & Enable the server within it's pool
-     & Confirmation that the task was completed \\
+     & Confirmation of success \\
      \hline
-     disable $<$server-name$>$
-     & Disable the server within it's pool
-     & Confirmation that the task was completed \\
+     disable $<$resource$>$ [delay]
+     & Disables a resource gently, with an optional delay
+     & Confirmation of success \\
      \hline
-     updatecert $<$pool-name$>$
-     & Update the certificate for the pool
-     & Confirmation that the task was completed \\
+     disablenow $<$resource$>$ [delay]
+     & Disables a resource (not gently), with an optional delay
+     & Confirmation of success \\
+     \hline
+     help [command]
+     & Displays a usage text, or optionally, for one command
+     & Returns all usage text, or a single usage text \\
+     \hline
+     request-auth [message]
+     & Sends a request to the admin for access (message is optional)
+     & Confirmation that the log was sent \\
      \hline
     \end{tabular}
     \label{tab:commands}
 \end{table}
+\linebreak
 
 If a user asks to perform a task without proper having permissions, then the bot will respond to the user that they do not have permission to perform the requested task.
 
@@ -238,12 +267,10 @@ The chatbot should be able to receive command input from multiple sources simult
 \subsection{Usability requirements}
 For the user, sending commands through the chatbot should be a seamless experience, minimizing the number of required steps to perform a task.
 To achieve this, the chatbot must minimize user interaction while maintaining security.
-Initial commands will require an additional authentication step, subsequent commands will use cached information for as long as the authentication token is valid (this depends on implemented protocol).
-Given the sensitivity of the user's tasks, security may take precedence over usability when necessary.
 
 The chatbot will accept commands from authorized users in a similar style to command line utilities.
 The formatting of the interaction will be first the command, then any applicable flag, followed by additional information.
-For example, a user may ask the bot to remove webserver2 from the pool by inputting: "remove webserver2".
+For example, a user may ask the bot to disable webserver2 by inputting: "disable webserver2".
 
 \subsection{Interface requirements}
 For proper operation and integration of the chatbot and it's relay, both have a number of existing systems that they must interface with.
@@ -253,17 +280,13 @@ This includes designing a system of continuous integration/deployment to allow f
 The chatbot must also interface with the chosen chat platform.
 Finally, the chatbot must remotely interface with it's relay using a secure connection and common language, through which, it can communicate with the relay.
 
-The relay, the second piece of software, will be deployed internally within the Oregon State University network.
+The relay, the second piece of software, will eventually be deployed internally within the Oregon State University network.
 To achieve this, it will likely be deployed as a virtual machine, however the details of this deployment are not statically specified at this time.
+However, for development, the relay will be deployed to a cloud instance.
 
 The relay must accept a secure connection from the chatbot (which is deployed remotely).
 The relay must interpret user information contained within requests from the chatbot to identify and authenticate against the load balancer (Citrix NetScaler).
 The relay will interpret commands and send requests to the Citrix NetScaler using it's REST API, NITRO API.
-
-\subsection{Logical database requirements}
-Initial software system designs exclude a need for a dedicated database, as the original design is meant to be stateless, without need for persistent storage.
-However, the method by which authentication operates may necessitate an external database to match ONID account names to authentication credentials needed to query the NetScaler's API.
-Once authenticated, tokens may need to be retained for users that are performing multiple commands in a short amount of time.
 
 \subsection{Design constraints}
 The chatbot will be deployed to a cloud service in a manner that allows continuous deployment and continuous integration. 
@@ -291,7 +314,6 @@ All reconfiguration and status requests must be logged and made accessible to on
 The relay must interpret requests from the chatbot, never directly passing queries from the chatbot.
 The relay must minimize the amount of information that is sent to the chatbot, relaying only what is necessary.
 
-The chatbot should remain stateless, not requiring data persistence during a user's session.
 Additionally, the chatbot must never monitor messages that aren't directed at it.
 
 \subsubsection{Portability}
